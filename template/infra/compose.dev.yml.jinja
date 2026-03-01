@@ -19,6 +19,7 @@ services:
       - ../.env
     environment:
       PYTHONPATH: /workspace
+      PATH: /workspace/services/backend/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 {%- endif %}
 {%- if 'tg_bot' in modules %}
   tg_bot:
@@ -32,6 +33,7 @@ services:
       - ../.env
     environment:
       PYTHONPATH: /workspace
+      PATH: /workspace/services/tg_bot/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 {%- endif %}
 {%- if 'notifications' in modules %}
   notifications_worker:
@@ -45,6 +47,7 @@ services:
       - ../.env
     environment:
       PYTHONPATH: /workspace
+      PATH: /workspace/services/notifications_worker/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
 {%- endif %}
 {%- if 'backend' in modules %}
 

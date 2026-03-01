@@ -197,12 +197,9 @@ This would catch integration issues between generated code and user templates.
 
 ### compose.dev.yml: PATH не включает per-service .venv
 
-**Status**: TODO
-**Priority**: MEDIUM
+**Status**: DONE
 
-**Description**: В `infra/compose.dev.yml.jinja` сервисы (`tg_bot`, `notifications_worker`) монтируют `/workspace` и задают `PYTHONPATH`, но не добавляют `PATH` с per-service `.venv/bin`. В dev-режиме (Docker) установленные в venv инструменты (pytest, ruff) не видны.
-**Источник**: `docs/e2e-issues-iteration7.md`, issue #6.
-**Варианты решения**: добавить `PATH: /workspace/services/<name>/.venv/bin:/workspace/.venv/bin:$$PATH` в `environment`, или использовать `uv run` для запуска команд.
+**Description**: В `infra/compose.dev.yml.jinja` добавлен `PATH` с per-service `.venv/bin` + стандартный системный PATH из `python:X-slim` для всех трёх сервисов (backend, tg_bot, notifications_worker). Hardcoded PATH вместо `${PATH}` (утечка хостовых путей) или `$$PATH` (не раскрывается).
 
 ---
 
