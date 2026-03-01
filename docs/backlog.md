@@ -149,6 +149,28 @@
 
 ---
 
+## Integration Test Compose Bugs
+
+### Host venv shebang incompatible with container runtime
+
+**Status**: DONE
+**Priority**: CRITICAL
+
+**Description**: `compose.tests.integration.yml.jinja` used `PATH: /workspace/services/backend/.venv/bin:...`. In CI, host-built `.venv` shebangs pointed to host Python — broke container runtime.
+
+**Fix applied**: PATH changed to `/app/services/backend/.venv/bin:...` (image venv) + anonymous volume `- /app/services/backend/.venv` to shadow host venv. Copier tests in `TestIntegrationCompose` verify PATH doesn't reference `/workspace/.venv`.
+
+### No backend readiness check in integration compose
+
+**Status**: DONE
+**Priority**: CRITICAL
+
+**Description**: `compose.tests.integration.yml.jinja` used `depends_on: condition: service_started` — integration tests raced against backend startup.
+
+**Fix applied**: Added healthcheck (python urllib to `/health`, interval 2s, retries 15, start_period 5s) + switched to `condition: service_healthy`. Copier tests in `TestIntegrationCompose` verify healthcheck presence and `service_healthy` condition.
+
+---
+
 ## Template / Copier Issues
 
 ### ~~Copier tests (`tests/copier/`) нужно переписать~~ → ✅ Done

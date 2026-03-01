@@ -280,6 +280,61 @@ class TestComposeServices:
         assert "tg_bot" not in compose_dev.get("services", {})
 
 
+class TestIntegrationCompose:
+    """Validate compose.tests.integration.yml semantics (not just YAML validity)."""
+
+    def test_backend_path_uses_image_venv(self, project_backend: Path):
+        """Backend PATH must reference /app/ (image venv), not /workspace/ (host venv).
+
+        Host-built .venv has shebangs like #!/opt/hostedtoolcache/Python/.../python
+        which don't exist inside the container — causes 'cannot execute' errors.
+        """
+        import yaml
+
+        compose = yaml.safe_load(
+            (project_backend / "infra" / "compose.tests.integration.yml").read_text()
+        )
+        path_val = compose["services"]["backend"]["environment"]["PATH"]
+        assert "/workspace/services/backend/.venv/bin" not in path_val, (
+            f"backend PATH must not use host-mounted venv: {path_val}"
+        )
+
+    def test_integration_tests_path_uses_image_venv(self, project_backend: Path):
+        """integration-tests PATH must reference /app/ (image venv), not /workspace/."""
+        import yaml
+
+        compose = yaml.safe_load(
+            (project_backend / "infra" / "compose.tests.integration.yml").read_text()
+        )
+        path_val = compose["services"]["integration-tests"]["environment"]["PATH"]
+        assert "/workspace/services/backend/.venv/bin" not in path_val, (
+            f"integration-tests PATH must not use host-mounted venv: {path_val}"
+        )
+
+    def test_backend_has_healthcheck(self, project_backend: Path):
+        """Backend must define a healthcheck so integration-tests can wait for readiness."""
+        import yaml
+
+        compose = yaml.safe_load(
+            (project_backend / "infra" / "compose.tests.integration.yml").read_text()
+        )
+        assert "healthcheck" in compose["services"]["backend"], (
+            "backend must have a healthcheck for depends_on service_healthy"
+        )
+
+    def test_integration_tests_wait_for_backend_healthy(self, project_backend: Path):
+        """integration-tests must use condition: service_healthy, not service_started."""
+        import yaml
+
+        compose = yaml.safe_load(
+            (project_backend / "infra" / "compose.tests.integration.yml").read_text()
+        )
+        deps = compose["services"]["integration-tests"]["depends_on"]
+        assert deps["backend"]["condition"] == "service_healthy", (
+            f"Expected service_healthy, got: {deps['backend']['condition']}"
+        )
+
+
 class TestIntegration:
     """Integration tests - validate generated project structure."""
 

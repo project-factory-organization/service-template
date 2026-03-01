@@ -14,11 +14,18 @@ services:
       - ./.env.test
     environment:
       PYTHONPATH: /workspace
-      PATH: /workspace/services/backend/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+      PATH: /app/services/backend/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
       ASYNC_DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-service_template}
     volumes:
       - ../:/workspace:delegated
+      - /app/services/backend/.venv
     working_dir: /workspace
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
     stop_grace_period: 2s
 
   db:
@@ -40,15 +47,16 @@ services:
     working_dir: /workspace
     volumes:
       - ../:/workspace:delegated
+      - /app/services/backend/.venv
     env_file:
       - ../.env
       - ./.env.test
     environment:
       PYTHONPATH: /workspace
-      PATH: /workspace/services/backend/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
+      PATH: /app/services/backend/.venv/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/usr/bin:/sbin:/bin
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
       db:
         condition: service_healthy
 {% else %}
