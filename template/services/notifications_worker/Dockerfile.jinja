@@ -21,7 +21,8 @@ ARG INSTALL_DEV_DEPS
 COPY shared/pyproject.toml ./shared/pyproject.toml
 RUN mkdir -p ./shared/shared && touch ./shared/shared/__init__.py
 COPY services/notifications_worker/pyproject.toml services/notifications_worker/uv.lock ./services/notifications_worker/
-RUN cd services/notifications_worker \
+RUN --mount=type=cache,target=/root/.cache/uv \
+    cd services/notifications_worker \
     && if [ "$INSTALL_DEV_DEPS" = "true" ]; then \
     uv sync --frozen --no-install-project; \
     else \

@@ -156,7 +156,7 @@
 **Status**: TODO
 **Priority**: MEDIUM
 
-**Description**: 55 тестов скипаются с `copier not installed`. Fixture `copier_available` проверяет `shutil.which("copier")`, но при запуске через `.venv/bin/pytest` copier не в PATH. Кроме того, после итераций 2-3 (убрали tooling, перешли на venv, lazy broker) многие тесты устарели и требуют обновления. `make test-copier` определён в корневом Makefile. Copier тесты отключены в `.githooks/pre-push` (закомментированы с TODO).
+**Description**: 65 тестов в 15 классах. Fixture `copier_available` (conftest.py) проверяет `.venv/bin/copier` — если copier не установлен в root venv, все тесты скипаются. `make test-copier` и `make test-copier-slow` определены в корневом Makefile. Pre-push hook (``.githooks/pre-push``) запускает `make test-copier` при изменениях в template/, copier.yml, infra/, framework/, tests/. После итераций 2-3 (убрали tooling, перешли на venv, lazy broker) часть тестов может быть устаревшей.
 
 ### Enum Types in Model Fields
 
@@ -235,28 +235,11 @@ This would catch integration issues between generated code and user templates.
 
 ## Infrastructure Audit Fixes
 
-### Reduce Docker Build Context with .dockerignore
-
-**Status**: TODO
-**Priority**: HIGH
-
-**Description**: Create a `.dockerignore` file in the root to prevent copying unnecessary files (like `.venv`, `__pycache__`, `.git`) into the Docker build context.
-
-### Update Frontend Dockerfile to use npm ci
-
-**Status**: TODO
-**Priority**: MEDIUM
-
-**Description**: Replace `npm install` with `npm ci` in `services/frontend/Dockerfile`.
-
 ### Add Cache Mounts to Dockerfiles
 
-**Status**: TODO
-**Priority**: LOW
+**Status**: DONE
 
-**Description**: Use `--mount=type=cache,target=/root/.cache/uv` in Dockerfiles to speed up rebuilds.
-
-> **Примечание**: Было про pip/poetry cache, теперь актуально для uv cache.
+**Description**: `--mount=type=cache,target=/root/.cache/uv` добавлен в Dockerfile.jinja для backend, tg_bot, notifications_worker.
 
 ### Audit Scaffold Templates
 
@@ -266,12 +249,6 @@ This would catch integration issues between generated code and user templates.
 **Description**: Review templates in `.framework/framework/templates/scaffold/services/` to ensure they use the latest best practices adopted by main services.
 
 ## Simplification & Unification Tasks
-
-### Tooling Removal: Migrate to uv and Run Tools Natively
-
-**Status**: DONE
-
-**Description**: Tooling container removed. All tools run natively via per-service `.venv/` and root `.venv/`. See `docs/plan-tooling-removal.md`.
 
 ### Unified Handlers: Error Handling Strategy
 
@@ -287,13 +264,6 @@ This would catch integration issues between generated code and user templates.
 
 **Description**: Currently, events are published directly after DB writes. Consider implementing the Transactional Outbox pattern to avoid the dual write problem and ensure reliable event publishing.
 
-### Unified Handlers: Event Channel Naming Convention
-
-**Status**: TODO
-**Priority**: LOW
-
-**Description**: Standardize the format for event channel names (e.g., `<entity>.<action>` like `user.created`).
-
 ---
 
 ## Rust Migration Preparation
@@ -302,15 +272,12 @@ This would catch integration issues between generated code and user templates.
 
 ### Сделать YAML-спеки language-agnostic
 
-**Status**: TODO
+**Status**: PARTIALLY DONE
 **Priority**: LOW
 
-**Description**: Убрать Python-специфичные типы из `shared/spec/models.yaml` и domain specs. Использовать JSON Schema типы (`string`, `integer`, `boolean`, `array`) вместо Python-типов (`str`, `int`, `bool`, `list`). Это позволит генерировать код на любом языке из одних и тех же спеков.
+**Description**: Спеки уже используют абстрактные типы (`int`, `string`, `bool`, `float`, `datetime`, `uuid`) — не Python-специфичные. Коллекции: `list[T]`, `dict[K,V]` — shorthand-нотация, парсится `TypeSpec` (discriminated union в `framework/spec/types.py`). Маппинг централизован (см. пункт выше).
 
-**Что проверить**:
-- Типы в `models.yaml` — уже используют JSON Schema или Python-нотацию?
-- Типы параметров в domain specs (`services/*/spec/*.yaml`)
-- Маппинг типов в `framework/generators/` — вынести в отдельную таблицу соответствий
+**Осталось**: shorthand `list[string]` всё ещё Python-подобный. Рассмотреть переход на JSON Schema `array` + `items` для полной language-agnosticity. Низкий приоритет — текущий формат работает для Python и TypeScript.
 
 ### Rust PoC: backend сервис на Axum
 
@@ -330,10 +297,10 @@ This would catch integration issues between generated code and user templates.
 
 ### Вынести маппинг типов из генераторов
 
-**Status**: TODO
+**Status**: PARTIALLY DONE
 **Priority**: LOW
 
-**Description**: Сейчас маппинг YAML-типов в Python-типы захардкожен в генераторах. Вынести в конфигурируемую таблицу соответствий (`type_mappings.yaml` или аналог), чтобы можно было добавить маппинг для Rust без переписывания генераторов. Это шаг к мультиязычной кодогенерации.
+**Description**: Маппинг уже централизован в `framework/spec/types.py` — функции `type_spec_to_python()`, `type_spec_to_json_schema()`. Отдельные маппинги в `framework/frontend/generator.py` (TypeScript) и `framework/openapi/generator.py` (OpenAPI). Осталось: (1) унифицировать все маппинги через единую таблицу/конфиг, (2) вынести в YAML/TOML для добавления новых языков без кода.
 
 ### Исследовать Tera как замену Jinja2 для codegen
 
@@ -376,5 +343,17 @@ Excludes перенесены в `ruff.toml`, CLI-флаги убраны.
 
 ### E2E Issues iterations 4-5 — DONE
 Все 15 issues из iteration 5 закрыты в коммите `5c9128f`.
+
+### `.dockerignore` — DONE
+Exists in both root (52 lines) and `template/` (14 lines). Excludes `.venv/`, `__pycache__/`, `.git/`, `node_modules/`, `.env`, `docs/`.
+
+### Frontend Dockerfile: `npm ci` — DONE
+All Dockerfiles already use `npm ci` (template frontend + node scaffold).
+
+### Tooling Removal: Migrate to uv — DONE
+Tooling container removed. All tools run natively via per-service `.venv/` and root `.venv/`. See `docs/plan-tooling-removal.md`.
+
+### Event Channel Naming Convention — DONE (де-факто)
+Конвенция реализована в `EventsGenerator`: snake_case → dot-notation (`user_registered` → `user.registered`).
 
 </details>
