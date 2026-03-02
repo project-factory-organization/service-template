@@ -9,15 +9,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+        env:
+          SSH_KEY: {% raw %}${{ secrets.DEPLOY_SSH_KEY }}{% endraw %}
+
       - name: Copy compose files to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: {% raw %}${{ secrets.DEPLOY_HOST }}{% endraw %}
-          username: {% raw %}${{ secrets.DEPLOY_USER }}{% endraw %}
-          key: {% raw %}${{ secrets.DEPLOY_SSH_KEY }}{% endraw %}
-          source: "infra/compose.base.yml,infra/compose.prod.yml"
-          target: {% raw %}/opt/services/${{ secrets.PROJECT_NAME }}{% endraw %}
-          overwrite: true
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=30 -i ~/.ssh/deploy_key"
+          HOST="{% raw %}${{ secrets.DEPLOY_USER }}{% endraw %}@{% raw %}${{ secrets.DEPLOY_HOST }}{% endraw %}"
+          TARGET="/opt/services/{% raw %}${{ secrets.PROJECT_NAME }}{% endraw %}/infra"
+          for attempt in 1 2 3; do
+            echo "SCP attempt $attempt/3"
+            if ssh $SSH_OPTS "$HOST" "mkdir -p $TARGET" && \
+               scp $SSH_OPTS infra/compose.base.yml infra/compose.prod.yml "$HOST:$TARGET/"; then
+              echo "SCP succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              wait=$((attempt * 15))
+              echo "SCP failed, retrying in ${wait}s..."
+              sleep $wait
+            fi
+          done
+          echo "SCP failed after 3 attempts"
+          exit 1
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
@@ -45,7 +64,21 @@ jobs:
             ufw allow {% raw %}${{ secrets.DEPLOY_PORT }}{% endraw %}/tcp || true
 
             # Log in to Docker registry
-            echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_URL" -u "$REGISTRY_USER" --password-stdin
+            for attempt in 1 2 3; do
+              echo "Docker login attempt $attempt/3"
+              if echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_URL" -u "$REGISTRY_USER" --password-stdin; then
+                echo "Docker login succeeded"
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                wait=$((attempt * 10 - 5))
+                echo "Docker login failed, retrying in ${wait}s..."
+                sleep $wait
+              else
+                echo "Docker login failed after 3 attempts"
+                exit 1
+              fi
+            done
 
             # Pull and deploy
             cd "$PROJECT_DIR/infra"
@@ -60,7 +93,21 @@ jobs:
               $COMPOSE down -v --remove-orphans 2>/dev/null || true
             fi
 
-            $COMPOSE pull
+            for attempt in 1 2 3; do
+              echo "Docker pull attempt $attempt/3"
+              if $COMPOSE pull; then
+                echo "Docker pull succeeded"
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                wait=$((attempt * 10))
+                echo "Docker pull failed, retrying in ${wait}s..."
+                sleep $wait
+              else
+                echo "Docker pull failed after 3 attempts"
+                exit 1
+              fi
+            done
             $COMPOSE up -d --remove-orphans
 
             # Health check: wait and verify all containers are running
