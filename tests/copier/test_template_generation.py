@@ -294,7 +294,13 @@ class TestComposeServices:
         required_vars = re.findall(r"\$\{(\w+):\?[^}]*\}", anchor_section)
         assert not required_vars, (
             f"x-backend-env uses ${{VAR:?}} for {required_vars} — "
-            "this breaks env_file workflows. Use ${{VAR}} or ${{VAR:-default}} instead."
+            "this breaks env_file workflows. Use ${{VAR:-default}} instead."
+        )
+        # Bare ${VAR} without defaults also breaks — empty string when not in shell
+        bare_vars = re.findall(r"\$\{(\w+)\}", anchor_section)
+        assert not bare_vars, (
+            f"x-backend-env uses bare ${{VAR}} for {bare_vars} — "
+            "resolves to empty string when not in shell env. Use ${{VAR:-default}}."
         )
 
 
