@@ -12,22 +12,34 @@ from faststream.redis.parser import BinaryMessageFormatV1
 
 from shared.generated.schemas import CommandReceived, UserRegisteredEvent
 
-redis_url = os.getenv("REDIS_URL")
-if not redis_url:
-    raise RuntimeError("REDIS_URL is not set; please add it to your environment variables")
-broker = RedisBroker(redis_url, message_format=BinaryMessageFormatV1)
+_broker: RedisBroker | None = None
 
-_publisher_user_registered = broker.publisher("user_registered")
+
+def get_broker() -> RedisBroker:
+    """Get or create the Redis broker (lazy initialization)."""
+    global _broker
+    if _broker is None:
+        redis_url = os.getenv("REDIS_URL")
+        if not redis_url:
+            raise RuntimeError("REDIS_URL is not set; please add it to your environment variables")
+        _broker = RedisBroker(redis_url, message_format=BinaryMessageFormatV1)
+    return _broker
+
+_pub_user_registered: Any = None
 
 
 async def publish_user_registered(message: UserRegisteredEvent) -> Any:
     """Publish UserRegisteredEvent to channel 'user_registered'."""
-    return await _publisher_user_registered.publish(message)
-
-
-_publisher_command_received = broker.publisher("command_received")
+    global _pub_user_registered
+    if _pub_user_registered is None:
+        _pub_user_registered = get_broker().publisher("user_registered")
+    return await _pub_user_registered.publish(message)
+_pub_command_received: Any = None
 
 
 async def publish_command_received(message: CommandReceived) -> Any:
     """Publish CommandReceived to channel 'command_received'."""
-    return await _publisher_command_received.publish(message)
+    global _pub_command_received
+    if _pub_command_received is None:
+        _pub_command_received = get_broker().publisher("command_received")
+    return await _pub_command_received.publish(message)

@@ -7,55 +7,48 @@
 """
 Protocols for service controllers.
 """
-
 from __future__ import annotations
 
 from typing import Protocol
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from shared.generated.schemas import (
-    CommandReceived,
-    CommandReceivedCreate,
     UserCreate,
     UserRead,
     UserUpdate,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-
 
 class UsersControllerProtocol(Protocol):
     """Protocol for users controller."""
 
+    # Dual transport: REST + Events
     async def create_user(
         self,
         session: AsyncSession,
         payload: UserCreate,
-    ) -> UserRead: ...
+    ) -> UserRead:
+        ...
 
     async def get_user(
         self,
         session: AsyncSession,
         user_id: int,
-    ) -> UserRead: ...
+    ) -> UserRead:
+        ...
 
     async def update_user(
         self,
         session: AsyncSession,
         user_id: int,
         payload: UserUpdate,
-    ) -> UserRead: ...
+    ) -> UserRead:
+        ...
 
     async def delete_user(
         self,
         session: AsyncSession,
         user_id: int,
-    ) -> None: ...
+    ) -> None:
+        ...
 
-
-class DebugControllerProtocol(Protocol):
-    """Protocol for debug controller."""
-
-    async def command(
-        self,
-        session: AsyncSession,
-        payload: CommandReceivedCreate,
-    ) -> CommandReceived: ...

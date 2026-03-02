@@ -69,7 +69,7 @@ class ProtocolsGenerator(BaseGenerator):
         env = Environment(
             loader=FileSystemLoader(str(self.templates_dir)),
             trim_blocks=True,
-            lstrip_blocks=False,  # Keep indentation for protocol methods
+            lstrip_blocks=True,
             autoescape=False,  # noqa: S701
         )
         template = env.get_template("protocols.py.j2")

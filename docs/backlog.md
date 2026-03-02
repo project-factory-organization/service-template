@@ -270,6 +270,22 @@ models:
 3. Пример подключения роутера в `app/api/router.py`
 4. Упоминание PATCH как альтернативы PUT для partial updates
 
+### Codegen quality: косметические баги в generated output
+
+**Status**: DONE
+**Priority**: LOW
+**Источник**: Worker audit report, E2E todo_api Level C (2026-03-02)
+
+Три мелких бага в кодогенерации, которые не ломают функциональность, но создают шум и путают разработчиков/агентов.
+
+**Подзадачи** (все закрыты):
+
+1. **Update schema defaults: `""` / `False` вместо `None`** — DONE. `_model_to_schema()` теперь удаляет оригинальный `default` для variant-optional полей (`prop.pop("default", None)`).
+
+2. **Inconsistent indentation в generated protocols** — DONE. Корень: `lstrip_blocks=False` в `ProtocolsGenerator` (единственный генератор с таким значением). Плюс `format_file()` вызывал голый `ruff` без пути к venv → `FileNotFoundError` → тихий `pass`. Фиксы: (a) `lstrip_blocks=True`, (b) `format_file()` теперь использует `.venv/bin/ruff` по абсолютному пути.
+
+3. **Trailing whitespace в scaffolded `lifespan.py`** — DONE. `{% endif -%}` на последнем тэге убирает trailing blank line.
+
 ### Add E2E CI Job for Unified Handlers
 
 **Status**: DONE

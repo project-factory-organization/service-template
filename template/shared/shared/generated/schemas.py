@@ -13,10 +13,6 @@ from typing import Any
 from pydantic import AwareDatetime, BaseModel, ConfigDict, RootModel, conint
 
 
-class Model(RootModel[Any]):
-    root: Any
-
-
 class User(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -41,7 +37,7 @@ class UserUpdate(BaseModel):
         extra="forbid",
     )
     telegram_id: conint(ge=0) | None = None
-    is_admin: bool | None = False
+    is_admin: bool | None = None
 
 
 class UserRead(BaseModel):

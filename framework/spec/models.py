@@ -265,7 +265,13 @@ class ModelsSpec(BaseModel):
         required = []
 
         for field_name, field in fields.items():
-            properties[field_name] = field.to_json_schema()
+            prop = field.to_json_schema()
+
+            # Variant-level optional fields must default to None, not the field's original default
+            if field_name in optional_fields:
+                prop.pop("default", None)
+
+            properties[field_name] = prop
 
             # Required if: no default AND not explicitly optional (variant-level or field-level)
             is_variant_optional = field_name in optional_fields

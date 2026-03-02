@@ -21,4 +21,4 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
     yield
 {% if 'tg_bot' in modules or 'notifications' in modules %}
     await broker.close()
-{% endif %}
+{% endif -%}
