@@ -255,7 +255,7 @@ models:
 
 ### Добавить примеры роутеров и list-эндпоинтов в AGENTS.md
 
-**Status**: TODO
+**Status**: DONE
 **Priority**: MEDIUM
 
 **Description**: AGENTS.md не содержит примера роутера и list-эндпоинта. После удаления `RoutersGenerator` (см. `docs/simplification-plan.md`) агент пишет роутеры вручную, но в документации нет ни одного примера — как выглядит роутер, как подключить его в `router.py`, как объявить list-операцию в спеке.

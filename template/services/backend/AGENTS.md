@@ -20,7 +20,7 @@ Backend использует spec-first подход: модели и прото
 4. Сгенерированные протоколы появятся в `services/backend/src/generated/protocols.py`
 5. Реализуйте методы в `services/backend/src/controllers/<domain>.py`
 
-**Правило:** Никогда не создавайте `BaseModel` или `APIRouter` вручную — они генерируются. Это проверяется линтером (`make lint`).
+**Правило:** Никогда не создавайте `BaseModel` вручную — схемы генерируются из `models.yaml`. Роутеры (`APIRouter`) пишутся вручную (см. раздел «Роутеры» ниже).
 
 ## Directory Structure
 
@@ -33,6 +33,99 @@ services/backend/
 │   └── generated/     # НЕ РЕДАКТИРОВАТЬ: protocols.py, routers
 ├── migrations/        # Alembic миграции
 └── tests/
+```
+
+## Роутеры
+
+Роутеры пишутся вручную в `src/app/api/routers/<domain>.py` и подключаются в `src/app/api/router.py`.
+
+**Пример спека с list-операцией** (`spec/todos.yaml`):
+```yaml
+domain: todos
+config:
+  rest:
+    prefix: "/todos"
+    tags: ["todos"]
+
+operations:
+  list_todos:
+    output: list[TodoRead]       # list[Model] для коллекций
+    rest:
+      method: GET
+      path: ""
+
+  create_todo:
+    input: TodoCreate
+    output: TodoRead
+    rest:
+      method: POST
+      path: ""
+      status: 201
+
+  update_todo:
+    input: TodoUpdate            # PATCH для partial updates
+    output: TodoRead
+    params:
+      - name: todo_id
+        type: int
+    rest:
+      method: PATCH
+      path: "/{todo_id}"
+```
+
+**Пример роутера** (`src/app/api/routers/todos.py`):
+```python
+"""Router for todos."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Body, Depends, Path
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.backend.src.controllers.todos import TodosController
+from services.backend.src.core.db import get_async_db
+from services.backend.src.generated.protocols import TodosControllerProtocol
+from shared.generated.schemas import TodoCreate, TodoRead, TodoUpdate
+
+router = APIRouter(prefix="/todos", tags=["todos"])
+
+
+def get_controller() -> TodosControllerProtocol:
+    return TodosController()
+
+
+@router.get("", response_model=list[TodoRead])
+async def list_todos(
+    session: AsyncSession = Depends(get_async_db),  # noqa: B008
+    controller: TodosControllerProtocol = Depends(get_controller),  # noqa: B008
+) -> list[TodoRead]:
+    return await controller.list_todos(session=session)
+
+
+@router.post("", response_model=TodoRead, status_code=201)
+async def create_todo(
+    payload: TodoCreate = Body(...),  # noqa: B008
+    session: AsyncSession = Depends(get_async_db),  # noqa: B008
+    controller: TodosControllerProtocol = Depends(get_controller),  # noqa: B008
+) -> TodoRead:
+    return await controller.create_todo(session=session, payload=payload)
+
+
+@router.patch("/{todo_id}", response_model=TodoRead)
+async def update_todo(
+    todo_id: int = Path(...),  # noqa: B008
+    payload: TodoUpdate = Body(...),  # noqa: B008
+    session: AsyncSession = Depends(get_async_db),  # noqa: B008
+    controller: TodosControllerProtocol = Depends(get_controller),  # noqa: B008
+) -> TodoRead:
+    return await controller.update_todo(session=session, todo_id=todo_id, payload=payload)
+```
+
+**Подключение в `src/app/api/router.py`:**
+```python
+from .routers.todos import router as todos_router
+
+api_router.include_router(todos_router)
 ```
 
 ## Database & Migrations
