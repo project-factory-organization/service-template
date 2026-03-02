@@ -459,6 +459,38 @@ ModuleNotFoundError: No module named 'shared.generated'
 
 ---
 
+## Dev Environment (orchestrator integration)
+
+### Makefile: `makemigrations` не загружает `.env`
+
+**Status**: DONE
+**Priority**: HIGH
+**Источник**: E2E тесты codegen_orchestrator (todo_api Level A/B/C, 2026-03-02), воспроизводится стабильно.
+
+**Description**: `make makemigrations name="..."` запускает Alembic напрямую в shell без загрузки переменных окружения из `.env`. Alembic импортирует `settings.py` → `get_settings()` → `_validate_required_env_vars()` → `RuntimeError: Required environment variables are not set: APP_NAME, APP_ENV, APP_SECRET_KEY, POSTGRES_HOST, ...`.
+
+Агент (Claude Code в worker-контейнере) вызывает `orchestrator dev-env start-infra db` — PostgreSQL поднимается. Но `make makemigrations` падает, потому что в shell нет env vars. Агент вынужден писать миграции вручную.
+
+**Текущий таргет в Makefile**:
+```makefile
+makemigrations:
+	PYTHONPATH=. services/backend/.venv/bin/alembic -c services/backend/migrations/alembic.ini revision --autogenerate -m "$(name)"
+```
+
+**Фикс**: Добавить `include .env` в начало Makefile (или как минимум `source .env` в таргете makemigrations). Аналогично для таргетов `migrate` и `test-integration`, которые тоже нуждаются в DB-коннекте.
+
+```makefile
+# В начале Makefile:
+-include .env
+export
+```
+
+Минус `-include` (с дефисом): если `.env` нет — тихо пропускает. `export` прокидывает все переменные в subprocess.
+
+**Проверка**: После фикса в шаблоне, в сгенерированном проекте `make makemigrations name="test"` должен работать без предварительного `source .env`.
+
+---
+
 ## Закрытые пункты (архив)
 
 <details>

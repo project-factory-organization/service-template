@@ -1,5 +1,8 @@
 .PHONY: setup lint format typecheck tests dev-start dev-stop prod-start prod-stop {% if 'backend' in modules %}makemigrations generate-from-spec validate-specs lint-controllers openapi typescript test-integration{% endif %} log tooling-tests
 
+-include .env
+export
+
 DOCKER_COMPOSE ?= docker compose
 COMPOSE_BASE := -f infra/compose.base.yml
 COMPOSE_DEV := $(COMPOSE_BASE) -f infra/compose.dev.yml
