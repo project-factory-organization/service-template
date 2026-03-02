@@ -23,7 +23,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8000}:8000"
 {%- endif %}
 {%- if 'tg_bot' in modules %}
   tg_bot:
@@ -78,7 +78,7 @@ services:
       context: ../services/frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
 {%- endif %}
 {%- if 'tg_bot' in modules or 'notifications' in modules %}
 
