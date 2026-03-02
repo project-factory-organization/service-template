@@ -171,6 +171,28 @@
 
 ---
 
+## Compose / Deploy Bugs
+
+### compose.base.yml: `${VAR:?}` breaks env_file-based workflows
+
+**Status**: DONE
+**Priority**: CRITICAL
+
+**Description**: `x-backend-env` anchor in `compose.base.yml` used `${POSTGRES_USER:?}` (required-or-fail syntax). Docker Compose evaluates these from the **shell environment** before processing `env_file` directives — broke any compose command unless vars were pre-exported.
+
+**Fix applied**: Replaced `${VAR:?}` with `${VAR}` in `x-backend-env` anchor. Validation of required vars is handled by the app's `Settings` class at startup. Copier test `test_base_compose_no_required_var_syntax` prevents regression.
+
+### deploy.yml does not verify container health after deploy
+
+**Status**: DONE
+**Priority**: CRITICAL
+
+**Description**: `deploy.yml.jinja` ran `docker compose up -d` and reported success immediately. If the container crashed on startup, the deploy workflow still completed green.
+
+**Fix applied**: Post-deploy health check added — `sleep 15` + `$COMPOSE ps --format json` + python script that checks container State and calls `sys.exit(1)` on failure. Copier tests `test_deploy_verifies_container_health` and `test_deploy_script_fails_fast` prevent regression.
+
+---
+
 ## Template / Copier Issues
 
 ### ~~Copier tests (`tests/copier/`) нужно переписать~~ → ✅ Done

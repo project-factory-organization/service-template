@@ -279,6 +279,24 @@ class TestComposeServices:
         assert "redis" not in compose_dev.get("services", {})
         assert "tg_bot" not in compose_dev.get("services", {})
 
+    def test_base_compose_no_required_var_syntax(self, project_backend: Path):
+        """x-backend-env must not use ${VAR:?} — breaks env_file-based workflows.
+
+        Docker Compose evaluates ${VAR:?} from the shell environment BEFORE
+        processing env_file directives. This causes 'required variable is missing'
+        errors even when .env contains all values.
+        """
+        import re
+
+        compose = (project_backend / "infra" / "compose.base.yml").read_text()
+        # Everything before 'services:' is the YAML anchors section
+        anchor_section = compose.split("services:")[0]
+        required_vars = re.findall(r"\$\{(\w+):\?[^}]*\}", anchor_section)
+        assert not required_vars, (
+            f"x-backend-env uses ${{VAR:?}} for {required_vars} — "
+            "this breaks env_file workflows. Use ${{VAR}} or ${{VAR:-default}} instead."
+        )
+
 
 class TestIntegrationCompose:
     """Validate compose.tests.integration.yml semantics (not just YAML validity)."""
@@ -488,6 +506,36 @@ class TestWorkflowGeneration:
         assert "base64 -d" in deploy_yml
         assert "secrets.DEPLOY_HOST" in deploy_yml
         assert "secrets.PROJECT_NAME" in deploy_yml
+
+    def test_deploy_verifies_container_health(self, project_backend: Path):
+        """deploy.yml must check container health after 'docker compose up -d'.
+
+        Without this check, a crashing container (e.g. ModuleNotFoundError) still
+        results in a green workflow — the orchestrator records deployed_url and
+        reports success while the service is in a restart loop.
+        """
+        deploy_yml = (project_backend / ".github" / "workflows" / "deploy.yml").read_text()
+        assert "ps --format json" in deploy_yml, "Missing post-deploy container status check"
+        assert "sys.exit(1)" in deploy_yml, (
+            "Health check must fail the workflow when containers are unhealthy"
+        )
+
+    def test_deploy_script_fails_fast(self, project_backend: Path):
+        """Deploy SSH script must use 'set -euo pipefail' so health check failures propagate."""
+        deploy_yml = (project_backend / ".github" / "workflows" / "deploy.yml").read_text()
+        assert "set -euo pipefail" in deploy_yml
+
+    def test_deploy_detects_crash_loops(self, project_backend: Path):
+        """deploy.yml must check RestartCount to detect crash loops.
+
+        A container with restart_policy: on-failure can show State=running
+        at the exact moment of a point-in-time check while being in a crash
+        loop. RestartCount > 0 within seconds of deploy is a definitive signal.
+        """
+        deploy_yml = (project_backend / ".github" / "workflows" / "deploy.yml").read_text()
+        assert "RestartCount" in deploy_yml, (
+            "Deploy must check docker RestartCount to reliably detect crash loops"
+        )
 
 
 class TestCIWorkflowSimulation:
