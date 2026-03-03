@@ -39,6 +39,7 @@ class SchemasGenerator(BaseGenerator):
             use_union_operator=True,
             use_schema_description=True,
             use_field_description=True,
+            strict_nullable=True,
             target_python_version=PythonVersion.PY_311,
             output=self.output_file,
             disable_timestamp=True,
