@@ -106,7 +106,7 @@ class FieldSpec(BaseModel):
             schema["default"] = self.default
         if self.readonly:
             schema["readOnly"] = True
-        if self.optional:
+        if self.optional and self.default is None:
             schema["nullable"] = True
 
         return schema

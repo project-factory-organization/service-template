@@ -9,8 +9,24 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from framework.spec.types import parse_type_spec, type_spec_to_python
+
 if TYPE_CHECKING:
     from framework.spec.operations import OperationSpec
+
+# Param types that need explicit imports in generated code
+_PARAM_TYPE_IMPORTS: dict[str, str] = {
+    "uuid": "from uuid import UUID",
+    "datetime": "from pydantic import AwareDatetime",
+}
+
+# Map Python type names back to spec primitives (ParamSpec uses Python names as defaults)
+_PYTHON_TO_SPEC: dict[str, str] = {
+    "str": "string",
+    "int": "int",
+    "bool": "bool",
+    "float": "float",
+}
 
 
 @dataclass
@@ -48,6 +64,7 @@ class OperationContext:
     output_model: str | None = None
     return_type: str = "None"
     imports: set[str] = field(default_factory=set)
+    param_type_imports: set[str] = field(default_factory=set)
 
     # REST-specific (populated only for REST operations)
     http_method: str | None = None
@@ -117,7 +134,6 @@ class OperationContextBuilder:
             OperationContext ready for template rendering
         """
         imports: set[str] = set()
-        params: list[ParamContext] = []
 
         # Collect models for imports (use base models, not wrapped types)
         if operation.input_model:
@@ -125,30 +141,7 @@ class OperationContextBuilder:
         if operation.base_output_model:
             imports.add(operation.base_output_model)
 
-        # Build params from spec with source-specific FastAPI syntax
-        for param in operation.params:
-            # Determine FastAPI source based on param source type
-            if param.source == "query":
-                if param.default is not None:
-                    fastapi_source = f"Query(default={param.default!r})"
-                elif not param.required:
-                    fastapi_source = "Query(default=None)"
-                else:
-                    fastapi_source = "Query(...)"
-            else:
-                # Path params are always required
-                fastapi_source = "Path(...)"
-
-            params.append(
-                ParamContext(
-                    name=param.name,
-                    type=param.type,
-                    required=param.required,
-                    param_source=param.source,
-                    default=param.default,
-                    fastapi_source=fastapi_source,
-                )
-            )
+        params, param_type_imports = self._build_params(operation)
 
         # Build base context with transport type flags
         ctx = OperationContext(
@@ -158,6 +151,7 @@ class OperationContextBuilder:
             output_model=operation.base_output_model,  # Use unwrapped model
             return_type=operation.return_type,
             imports=imports,
+            param_type_imports=param_type_imports,
             response_many=operation.response_many,  # Pass the list flag
             has_rest=operation.rest is not None,
             has_events=operation.events is not None,
@@ -176,6 +170,53 @@ class OperationContextBuilder:
             ctx.publish_on_error_channel = operation.events.publish_on_error
 
         return ctx
+
+    @staticmethod
+    def _build_params(
+        operation: OperationSpec,
+    ) -> tuple[list[ParamContext], set[str]]:
+        """Build param contexts and collect type imports from operation params."""
+        params: list[ParamContext] = []
+        param_type_imports: set[str] = set()
+
+        for param in operation.params:
+            # Convert param type through the type system
+            # ParamSpec.type may use Python names (str, int) or spec names (string, uuid)
+            spec_type = _PYTHON_TO_SPEC.get(param.type, param.type)
+            try:
+                type_spec = parse_type_spec(spec_type)
+                python_type = type_spec_to_python(type_spec)
+            except ValueError:
+                # Not a spec primitive — pass through as-is (e.g. custom model name)
+                python_type = param.type
+
+            # Track stdlib/pydantic imports needed for this param type
+            if spec_type in _PARAM_TYPE_IMPORTS:
+                param_type_imports.add(_PARAM_TYPE_IMPORTS[spec_type])
+
+            # Determine FastAPI source based on param source type
+            if param.source == "query":
+                if param.default is not None:
+                    fastapi_source = f"Query(default={param.default!r})"
+                elif not param.required:
+                    fastapi_source = "Query(default=None)"
+                else:
+                    fastapi_source = "Query(...)"
+            else:
+                fastapi_source = "Path(...)"
+
+            params.append(
+                ParamContext(
+                    name=param.name,
+                    type=python_type,
+                    required=param.required,
+                    param_source=param.source,
+                    default=param.default,
+                    fastapi_source=fastapi_source,
+                )
+            )
+
+        return params, param_type_imports
 
     def build_for_protocol(self, operation: OperationSpec) -> OperationContext:
         """Build context specifically for Protocol generation.

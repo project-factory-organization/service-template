@@ -2,7 +2,8 @@
 
 import pytest
 
-from framework.spec.operations import EventsConfig, OperationSpec, RestConfig
+from framework.generators.context import OperationContextBuilder
+from framework.spec.operations import EventsConfig, OperationSpec, ParamSpec, RestConfig
 
 
 class TestEventsConfig:
@@ -143,8 +144,6 @@ class TestOperationContextTransportFlags:
 
     def test_rest_only_flags(self) -> None:
         """REST-only operation has correct flags."""
-        from framework.generators.context import OperationContextBuilder
-
         op = OperationSpec(
             name="get_user",
             output_model="UserRead",
@@ -161,8 +160,6 @@ class TestOperationContextTransportFlags:
 
     def test_events_only_flags(self) -> None:
         """Events-only operation has correct flags."""
-        from framework.generators.context import OperationContextBuilder
-
         op = OperationSpec(
             name="process_import",
             input_model="ImportBatch",
@@ -179,8 +176,6 @@ class TestOperationContextTransportFlags:
 
     def test_dual_transport_flags(self) -> None:
         """Dual-transport operation has correct flags."""
-        from framework.generators.context import OperationContextBuilder
-
         op = OperationSpec(
             name="create_user",
             input_model="UserCreate",
@@ -199,8 +194,6 @@ class TestOperationContextTransportFlags:
 
     def test_publish_on_error_in_context(self) -> None:
         """publish_on_error is included in events context."""
-        from framework.generators.context import OperationContextBuilder
-
         op = OperationSpec(
             name="process_import",
             input_model="ImportBatch",
@@ -214,3 +207,75 @@ class TestOperationContextTransportFlags:
 
         assert ctx.subscribe_channel == "import.requested"
         assert ctx.publish_on_error_channel == "import.failed"
+
+
+class TestParamTypeConversion:
+    """Tests for parameter type conversion in OperationContextBuilder."""
+
+    def test_uuid_param_converted_to_python_type(self) -> None:
+        """Param with type: uuid should produce UUID in context."""
+        op = OperationSpec(
+            name="get_todo",
+            output_model="TodoRead",
+            params=[ParamSpec(name="todo_id", type="uuid")],
+            rest=RestConfig(method="GET", path="/{todo_id}"),
+        )
+        builder = OperationContextBuilder()
+        ctx = builder.build_for_protocol(op)
+
+        assert ctx.params[0].type == "UUID"
+        assert "from uuid import UUID" in ctx.param_type_imports
+
+    def test_datetime_param_converted_to_python_type(self) -> None:
+        """Param with type: datetime should produce AwareDatetime in context."""
+        op = OperationSpec(
+            name="list_events",
+            output_model="list[EventRead]",
+            params=[ParamSpec(name="since", type="datetime", source="query")],
+            rest=RestConfig(method="GET"),
+        )
+        builder = OperationContextBuilder()
+        ctx = builder.build_for_protocol(op)
+
+        assert ctx.params[0].type == "AwareDatetime"
+        assert "from pydantic import AwareDatetime" in ctx.param_type_imports
+
+    def test_int_param_no_extra_imports(self) -> None:
+        """Param with type: int needs no extra imports."""
+        op = OperationSpec(
+            name="get_user",
+            output_model="UserRead",
+            params=[ParamSpec(name="user_id", type="int")],
+            rest=RestConfig(method="GET", path="/{user_id}"),
+        )
+        builder = OperationContextBuilder()
+        ctx = builder.build_for_protocol(op)
+
+        assert ctx.params[0].type == "int"
+        assert len(ctx.param_type_imports) == 0
+
+    def test_string_param_converted(self) -> None:
+        """Param with type: string should produce str."""
+        op = OperationSpec(
+            name="get_by_slug",
+            output_model="ItemRead",
+            params=[ParamSpec(name="slug", type="string")],
+            rest=RestConfig(method="GET", path="/{slug}"),
+        )
+        builder = OperationContextBuilder()
+        ctx = builder.build_for_protocol(op)
+
+        assert ctx.params[0].type == "str"
+
+    def test_default_param_type_is_str(self) -> None:
+        """Param without explicit type defaults to str."""
+        op = OperationSpec(
+            name="get_item",
+            output_model="ItemRead",
+            params=[ParamSpec(name="item_id")],
+            rest=RestConfig(method="GET", path="/{item_id}"),
+        )
+        builder = OperationContextBuilder()
+        ctx = builder.build_for_protocol(op)
+
+        assert ctx.params[0].type == "str"

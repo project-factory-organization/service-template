@@ -26,6 +26,7 @@ class ProtocolsGenerator(BaseGenerator):
         # Group domains by service
         services_domains: dict[str, list] = {}
         services_imports: dict[str, set[str]] = {}
+        services_param_type_imports: dict[str, set[str]] = {}
 
         for domain_key, domain in sorted(self.specs.domains.items()):
             service_name, domain_name = domain_key.split("/")
@@ -33,6 +34,7 @@ class ProtocolsGenerator(BaseGenerator):
             if service_name not in services_domains:
                 services_domains[service_name] = []
                 services_imports[service_name] = set()
+                services_param_type_imports[service_name] = set()
 
             protocol_name = f"{domain_name.capitalize()}ControllerProtocol"
 
@@ -54,6 +56,7 @@ class ProtocolsGenerator(BaseGenerator):
 
                 # Collect imports
                 services_imports[service_name].update(ctx.imports)
+                services_param_type_imports[service_name].update(ctx.param_type_imports)
 
                 handlers.append(handler_ctx)
 
@@ -82,6 +85,7 @@ class ProtocolsGenerator(BaseGenerator):
             content = template.render(
                 routers=domains_context,  # Template expects 'routers' key
                 imports=services_imports[service_name],
+                param_type_imports=sorted(services_param_type_imports[service_name]),
                 async_handlers=True,
             )
             self.write_file(output_file, content)

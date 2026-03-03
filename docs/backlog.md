@@ -286,6 +286,18 @@ models:
 
 3. **Trailing whitespace в scaffolded `lifespan.py`** — DONE. `{% endif -%}` на последнем тэге убирает trailing blank line.
 
+### Codegen quality: param types и optional schemas
+
+**Status**: DONE
+**Priority**: HIGH / LOW
+**Источник**: E2E todo_api Level C (2026-03-03), worker audit report
+
+Два бага:
+
+1. **UUID param type: `uuid` (модуль) вместо `UUID` (класс)** — DONE. `ParamSpec.type` (plain `str`) передавался в шаблоны протоколов/контроллеров без конвертации через `type_spec_to_python()`. Фикс: `OperationContextBuilder._build_params()` теперь конвертирует типы и собирает `param_type_imports` (`from uuid import UUID`, `from pydantic import AwareDatetime`). Шаблоны `protocols.py.j2` и `controller.py.j2` рендерят эти импорты.
+
+2. **Optional + non-None default: `str | None = ""`** — DONE. `FieldSpec.to_json_schema()` безусловно ставил `nullable: true` при `optional: true`. Фикс: nullable добавляется только когда `default is None`.
+
 ### Add E2E CI Job for Unified Handlers
 
 **Status**: DONE

@@ -7,6 +7,12 @@ from __future__ import annotations
 from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
+{% if param_type_imports %}
+
+{% for imp in param_type_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
 
 {% if imports %}
 from shared.generated.schemas import (

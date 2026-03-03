@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession
+{% if param_type_imports %}
+
+{% for imp in param_type_imports %}
+{{ imp }}
+{% endfor %}
+{% endif %}
 
 from ..generated.protocols import {{ protocol_name }}
 

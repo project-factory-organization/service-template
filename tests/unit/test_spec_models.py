@@ -301,3 +301,46 @@ class TestModelsSpec:
         create = schema["definitions"]["SubscriptionCreate"]
         assert create["properties"]["telegram_id"]["nullable"] is True
         assert "telegram_id" not in create["required"]
+
+    def test_optional_field_with_non_none_default_not_nullable(self) -> None:
+        """Field with optional: true and non-None default should NOT be nullable."""
+        spec = ModelsSpec.from_yaml(
+            {
+                "models": {
+                    "Item": {
+                        "fields": {
+                            "id": {"type": "int", "readonly": True},
+                            "name": {"type": "string"},
+                            "is_active": {
+                                "type": "bool",
+                                "optional": True,
+                                "default": False,
+                            },
+                            "description": {
+                                "type": "string",
+                                "optional": True,
+                                "default": "",
+                            },
+                        },
+                        "variants": {
+                            "Create": {},
+                            "Read": {},
+                        },
+                    },
+                },
+            }
+        )
+        schema = spec.to_json_schema()
+
+        # is_active: optional + default=false → NOT nullable, has default
+        base = schema["definitions"]["Item"]
+        assert "nullable" not in base["properties"]["is_active"]
+        assert base["properties"]["is_active"]["default"] is False
+
+        # description: optional + default="" → NOT nullable, has default
+        assert "nullable" not in base["properties"]["description"]
+        assert base["properties"]["description"]["default"] == ""
+
+        # Both fields should NOT be required (they have defaults)
+        assert "is_active" not in base["required"]
+        assert "description" not in base["required"]

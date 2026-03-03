@@ -48,6 +48,7 @@ class ControllersGenerator(BaseGenerator):
         """Generate a single controller stub."""
         handlers = []
         imports: set[str] = set()
+        param_type_imports: set[str] = set()
 
         for operation in domain.operations:
             ctx = self.context_builder.build_for_protocol(operation)
@@ -61,6 +62,7 @@ class ControllersGenerator(BaseGenerator):
             }
 
             imports.update(ctx.imports)
+            param_type_imports.update(ctx.param_type_imports)
             handlers.append(handler_ctx)
 
         context = {
@@ -68,6 +70,7 @@ class ControllersGenerator(BaseGenerator):
             "protocol_name": f"{module_name.capitalize()}ControllerProtocol",
             "handlers": handlers,
             "imports": imports,
+            "param_type_imports": sorted(param_type_imports),
             "async_handlers": True,  # Always async in new format
         }
 
