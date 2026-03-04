@@ -28,7 +28,7 @@ endif
 endif
 
 setup:
-	uv venv
+	uv venv --quiet 2>/dev/null || uv venv --clear --quiet
 	uv pip install -e .framework/ ruff xenon
 	@for svc in services/*/; do \
 		[ -f "$$svc/pyproject.toml" ] || continue; \
@@ -44,13 +44,13 @@ setup:
 
 lint:
 	$(VENV)/ruff check .
-	$(VENV)/xenon --max-absolute B --max-modules A --max-average A --exclude '.framework/*,tests/*' .
+	$(VENV)/xenon --max-absolute B --max-modules A --max-average A --exclude '.framework/*,tests/*,services/*/tests/*' .
 	$(PYTHON) -c "from framework.spec.loader import validate_specs_cli; from framework.lib.env import get_repo_root; ok, msg = validate_specs_cli(get_repo_root()); print(msg); exit(0 if ok else 1)"
 	$(PYTHON) -m framework.enforce_spec_compliance
 	$(PYTHON) -c "from framework.lint.controller_sync import lint_controllers_cli; from framework.lib.env import get_repo_root; ok, msg = lint_controllers_cli(get_repo_root()); print(msg); exit(0 if ok else 1)"
 
 lint-complexity:
-	$(VENV)/xenon --max-absolute B --max-modules A --max-average A --exclude ".framework/*,tests/*" .
+	$(VENV)/xenon --max-absolute B --max-modules A --max-average A --exclude ".framework/*,tests/*,services/*/tests/*" .
 {% if 'backend' in modules %}
 validate-specs:
 	$(PYTHON) -c "from framework.spec.loader import validate_specs_cli; from framework.lib.env import get_repo_root; ok, msg = validate_specs_cli(get_repo_root()); print(msg); exit(0 if ok else 1)"
