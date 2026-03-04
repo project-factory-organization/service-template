@@ -22,14 +22,19 @@ class Base(DeclarativeBase):
     pass
 
 
-class ORMBase(Base):
-    """Common columns shared by all persisted models."""
-
-    __abstract__ = True
+class CreatedAtMixin:
+    """Mixin that adds created_at timestamp."""
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class ORMBase(CreatedAtMixin, Base):
+    """Common columns shared by all persisted models (created_at + updated_at)."""
+
+    __abstract__ = True
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
