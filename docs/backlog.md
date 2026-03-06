@@ -398,6 +398,27 @@ ModuleNotFoundError: No module named 'shared.generated'
 
 ---
 
+### CI: добавить `deptry` для обнаружения отсутствующих runtime-зависимостей
+
+**Status**: DONE
+**Priority**: HIGH
+
+**Description**: Coding agent добавил `import httpx` в runtime-код (`lesswrong.py`), но `httpx` был только в `[dependency-groups] dev`. CI тесты прошли (dev-deps установлены), Docker-образ собрался, но backend падает на проде с `ModuleNotFoundError: No module named 'httpx'`. Классическая ошибка "works in dev, crashes in prod".
+
+**Решение**: Добавить [`deptry`](https://github.com/fpgmaas/deptry) в CI pipeline (`ci.yml.jinja`). `deptry` статически анализирует импорты и сравнивает с `pyproject.toml` — находит:
+- **DEP002**: пакет в dev-deps, но импортируется в runtime-коде (наш случай)
+- **DEP001**: импорт пакета, которого нет в dependencies вообще
+- **DEP003**: transitive dependency used directly
+
+**Затронутые файлы**:
+- `template/.github/workflows/ci.yml.jinja` — добавить step `uv run deptry .` в `lint-and-test` job
+- `template/services/backend/pyproject.toml.jinja` — добавить `deptry` в dev-deps
+- Аналогично для `tg_bot` если есть `pyproject.toml`
+
+**Источник**: fortune-telling-bot deploy failure 2026-03-07 (`codegen_orchestrator`)
+
+---
+
 ## Infrastructure Audit Fixes
 
 ### Add Cache Mounts to Dockerfiles

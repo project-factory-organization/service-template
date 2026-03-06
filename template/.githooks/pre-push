@@ -106,6 +106,19 @@ if $run_lint; then
   ((checks_run++)) || true
 fi
 
+# Check dependency hygiene for affected services
+if [ ${#affected_services[@]} -gt 0 ]; then
+  for svc in "${affected_services[@]}"; do
+    svc_dir="services/$svc"
+    if [ -x "$svc_dir/.venv/bin/deptry" ] && [ -d "$svc_dir/src" ]; then
+      echo ""
+      echo "[pre-push] Checking dependencies: $svc..."
+      (cd "$svc_dir" && .venv/bin/deptry src/) || exit 1
+      ((checks_run++)) || true
+    fi
+  done
+fi
+
 # Run tests only for affected services
 if [ ${#affected_services[@]} -gt 0 ]; then
   for svc in "${affected_services[@]}"; do

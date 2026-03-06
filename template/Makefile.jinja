@@ -1,4 +1,4 @@
-.PHONY: setup lint format typecheck tests dev-start dev-stop prod-start prod-stop {% if 'backend' in modules %}migrate makemigrations generate-from-spec validate-specs lint-controllers openapi typescript test-integration{% endif %} log tooling-tests
+.PHONY: setup lint format typecheck tests dev-start dev-stop prod-start prod-stop {% if 'backend' in modules %}migrate makemigrations generate-from-spec validate-specs lint-controllers openapi typescript test-integration{% endif %} log tooling-tests check-deps
 
 -include .env
 export
@@ -52,9 +52,17 @@ lint:
 	$(PYTHON) -c "from framework.spec.loader import validate_specs_cli; from framework.lib.env import get_repo_root; ok, msg = validate_specs_cli(get_repo_root()); print(msg); exit(0 if ok else 1)"
 	$(PYTHON) -m framework.enforce_spec_compliance
 	$(PYTHON) -c "from framework.lint.controller_sync import lint_controllers_cli; from framework.lib.env import get_repo_root; ok, msg = lint_controllers_cli(get_repo_root()); print(msg); exit(0 if ok else 1)"
+	$(MAKE) check-deps
 
 lint-complexity:
 	$(VENV)/xenon --max-absolute B --max-modules A --max-average A --exclude ".framework/*,tests/*,services/*/tests/*" .
+
+check-deps:
+	@for svc in services/*/; do \
+		[ -f "$$svc/.venv/bin/deptry" ] || continue; \
+		echo ">> Checking dependencies: $$(basename $$svc)"; \
+		(cd "$$svc" && .venv/bin/deptry src/) || exit 1; \
+	done
 {% if 'backend' in modules %}
 validate-specs:
 	$(PYTHON) -c "from framework.spec.loader import validate_specs_cli; from framework.lib.env import get_repo_root; ok, msg = validate_specs_cli(get_repo_root()); print(msg); exit(0 if ok else 1)"
