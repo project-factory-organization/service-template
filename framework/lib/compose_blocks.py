@@ -245,14 +245,6 @@ def _render_depends_on(spec: ServiceSpec) -> str:
     return "\n".join(f"  {line}" for line in lines) + "\n"
 
 
-def _render_profiles(spec: ServiceSpec) -> str:
-    """Render profiles line from spec if present."""
-    if not spec.profiles:
-        return ""
-    profiles_str = ", ".join(f'"{p}"' for p in spec.profiles)
-    return f"  profiles: [{profiles_str}]\n"
-
-
 def _apply_placeholders(template: str, spec: ServiceSpec, key: str = "base") -> str:
     image_slug = IMAGE_SLUG_OVERRIDES.get(spec.slug, spec.slug.replace("_", "-"))
     replacements = {
@@ -268,8 +260,8 @@ def _apply_placeholders(template: str, spec: ServiceSpec, key: str = "base") -> 
     for key_placeholder, value in replacements.items():
         rendered = rendered.replace(key_placeholder, value)
 
-    # Insert depends_on and profiles from spec (for base template only)
-    if key == "base" and (spec.depends_on or spec.profiles):
+    # Insert depends_on from spec (for base template only)
+    if key == "base" and spec.depends_on:
         lines = rendered.splitlines()
         insert_idx = len(lines)
         for i, line in enumerate(lines):
@@ -277,15 +269,19 @@ def _apply_placeholders(template: str, spec: ServiceSpec, key: str = "base") -> 
                 insert_idx = i
                 break
         extra_lines: list[str] = []
-        if spec.depends_on:
-            extra_lines.append("  depends_on:")
-            for service, condition in spec.depends_on.items():
-                extra_lines.append(f"    {service}:")
-                extra_lines.append(f"      condition: {condition}")
-        if spec.profiles:
-            profiles_str = ", ".join(f'"{p}"' for p in spec.profiles)
-            extra_lines.append(f"  profiles: [{profiles_str}]")
+        extra_lines.append("  depends_on:")
+        for service, condition in spec.depends_on.items():
+            extra_lines.append(f"    {service}:")
+            extra_lines.append(f"      condition: {condition}")
         lines = lines[:insert_idx] + extra_lines + lines[insert_idx:]
+        rendered = "\n".join(lines)
+
+    # Insert profiles from spec (for dev template only)
+    if key == "dev" and spec.profiles:
+        lines = rendered.splitlines()
+        # Insert after the service name line (first line)
+        profiles_str = ", ".join(f'"{p}"' for p in spec.profiles)
+        lines.insert(1, f"  profiles: [{profiles_str}]")
         rendered = "\n".join(lines)
 
     return rendered.rstrip("\n") + "\n"

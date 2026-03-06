@@ -23,6 +23,9 @@ services:
 {%- endif %}
 {%- if 'tg_bot' in modules %}
   tg_bot:
+{%- if 'backend' in modules %}
+    profiles: ["tg"]
+{%- endif %}
     extends:
       file: compose.base.yml
       service: tg_bot

@@ -42,7 +42,7 @@ The project is a collection of modular services defined in `services.yml`.
 
 ### Compose Options
 
-Services can specify `depends_on` and `profiles` in `services.yml` to customize Docker Compose behavior.
+Services can specify `depends_on` and `profiles` in `services.yml` to customize Docker Compose behavior. Profiles are applied only to the dev compose overlay, so all services start unconditionally in production.
 
 ## Tooling Strategy
 

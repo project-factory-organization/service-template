@@ -38,7 +38,6 @@ services:
     depends_on:
       backend:
         condition: service_started
-    profiles: ["tg"]
 {%- endif %}
 {%- endif %}
 {%- if 'notifications' in modules %}

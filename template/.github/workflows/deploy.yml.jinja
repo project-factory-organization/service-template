@@ -84,10 +84,6 @@ jobs:
             cd "$PROJECT_DIR/infra"
             COMPOSE="docker compose --env-file ../.env -f compose.base.yml -f compose.prod.yml"
 
-            # Activate all compose profiles so every service starts in prod
-            COMPOSE_PROFILES=$($COMPOSE config --profiles 2>/dev/null | paste -sd, || echo "")
-            export COMPOSE_PROFILES
-
             # First deploy: remove stale volumes to avoid DB name mismatch
             if [ ! -f "$PROJECT_DIR/.env.bak" ]; then
               $COMPOSE down -v --remove-orphans 2>/dev/null || true
