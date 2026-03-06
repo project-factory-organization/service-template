@@ -506,6 +506,36 @@ ModuleNotFoundError: No module named 'shared.generated'
 
 ## Dev Environment (orchestrator integration)
 
+### compose.dev.yml: `ports:` ломает worker-контейнеры orchestrator'а
+
+**Status**: OPEN
+**Priority**: CRITICAL
+**Источник**: E2E diagnostic run codegen_orchestrator (2026-03-07), подтверждено live user run
+
+**Description**: `infra/compose.dev.yml.jinja` публикует `ports: - "5432:5432"` для db и `ports: - "6379:6379"` для redis. Когда проект запускается внутри worker-контейнера orchestrator'а, на хосте уже работает orchestrator'ский postgres на порту 5432. Результат: `docker compose up db` падает с `Bind for 0.0.0.0:5432 failed: port is already allocated`, контейнер db не стартует, DNS alias `db` не регистрируется, `getent hosts db` возвращает пустоту, alembic падает с `failed to resolve host 'db'`.
+
+**Почему это корневая причина "рекурсивного бага миграций"**: В codegen_orchestrator этот баг чинили 10 раз (коммиты `6530d68`..`3138d87`, февраль-март 2026). Все фиксы были направлены на DNS/network isolation, но реальная причина — ports конфликт. Баг "то есть, то нет" потому что зависит от того, занят ли порт 5432 на хосте.
+
+**Диагностика** (из DIAGNOSTIC_REPORT.md worker'а):
+```
+Step 4: orchestrator dev-env start-infra db
+  Error: Bind for 0.0.0.0:5432 failed: port is already allocated
+Step 5: getent hosts db
+  (no output - exit code 2, hostname 'db' does not resolve)
+Step 6: getent hosts redis
+  172.19.0.2 redis   <-- резолвится, потому что это orchestrator'ский redis
+Step 11: make migrate
+  psycopg.OperationalError: failed to resolve host 'db'
+```
+
+**Решение**: Ports нужны для локальной разработки без orchestrator'а — шаблон не трогаем. Фикс на стороне orchestrator'а: compose_runner инжектит override с `ports: []`. См. `codegen_orchestrator/docs/backlog.md` задача #53.
+
+**Затронутые файлы** (контекст для разработчика):
+- `template/infra/compose.dev.yml.jinja:58-59` — `ports: - "5432:5432"` для db
+- `template/infra/compose.dev.yml.jinja:67-68` — `ports: - "6379:6379"` для redis
+
+---
+
 ### Makefile: `makemigrations` не загружает `.env`
 
 **Status**: DONE

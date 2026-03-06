@@ -5,8 +5,9 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models import User
 from shared.generated.schemas import UserCreate, UserUpdate
+
+from ..models import User
 
 
 class UserRepository:
