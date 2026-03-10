@@ -79,9 +79,9 @@ if ! $DOCKER_AVAILABLE; then
         echo ""
         echo "[pre-push] Native lint passed. Full CI will run on GitHub."
     else
-        echo "[pre-push] WARNING: Neither Docker nor ruff available, skipping checks"
+        echo "[pre-push] ERROR: Neither Docker nor ruff available, cannot verify code quality"
+        exit 1
     fi
-    exit 0
 fi
 
 checks_run=0
