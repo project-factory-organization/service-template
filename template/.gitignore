@@ -15,5 +15,3 @@ services/*/.venv/
 
 build/
 dist/
-
-**/generated/

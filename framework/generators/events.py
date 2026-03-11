@@ -16,11 +16,11 @@ class EventsGenerator(BaseGenerator):
         self.output_file = self.repo_root / "shared" / "shared" / "generated" / "events.py"
 
     def generate(self) -> list[Path]:
-        """Generate events module."""
-        if not self.specs.events.events:
-            # No events defined, skip generation
-            return []
+        """Generate events module.
 
+        Always generates at least a stub with get_broker() so the import
+        never fails and coding agents have a clear place to add events.
+        """
         publishers = []
         subscribers = []
         imports: set[str] = set()
