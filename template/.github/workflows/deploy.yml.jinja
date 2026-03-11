@@ -82,7 +82,7 @@ jobs:
 
             # Pull and deploy
             cd "$PROJECT_DIR/infra"
-            COMPOSE="docker compose --env-file ../.env -f compose.base.yml -f compose.prod.yml"
+            COMPOSE="docker compose -p {% raw %}${{ secrets.PROJECT_NAME }}{% endraw %} --env-file ../.env -f compose.base.yml -f compose.prod.yml"
 
             # First deploy: remove stale volumes to avoid DB name mismatch
             if [ ! -f "$PROJECT_DIR/.env.bak" ]; then
