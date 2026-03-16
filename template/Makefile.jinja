@@ -101,6 +101,7 @@ tests:
 	exit $$failed
 {% if 'backend' in modules %}
 migrate:
+	@$(MAKE) dev-start svc=db
 	PYTHONPATH=. services/backend/.venv/bin/alembic -c services/backend/migrations/alembic.ini upgrade head
 
 makemigrations:
@@ -108,6 +109,7 @@ makemigrations:
 		echo "Usage: make makemigrations name=\"<description>\""; \
 		exit 1; \
 	fi
+	@$(MAKE) dev-start svc=db
 	PYTHONPATH=. services/backend/.venv/bin/alembic -c services/backend/migrations/alembic.ini revision --autogenerate -m "$(name)"
 
 test-integration:
@@ -125,7 +127,7 @@ log:
 	$(DOCKER_COMPOSE) $(COMPOSE_DEV) logs --tail=100 $$service
 
 dev-start:
-	$(DOCKER_COMPOSE) $(COMPOSE_DEV) up -d --build
+	$(DOCKER_COMPOSE) $(COMPOSE_DEV) up -d --build --wait $(svc)
 
 dev-stop:
 	$(DOCKER_COMPOSE) $(COMPOSE_DEV) down --remove-orphans
