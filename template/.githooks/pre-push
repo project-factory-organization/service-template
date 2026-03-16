@@ -70,22 +70,15 @@ fi
 
 # --- Execute checks ---
 
-# Native fallback: when Docker is not available, run ruff directly
+# Native fallback: when Docker is not available, use make lint directly.
+# make lint uses $(VENV)/ruff which resolves .venv/bin/ruff correctly.
+# This covers ruff, xenon, and all other linters defined in the Makefile.
 if ! $DOCKER_AVAILABLE; then
     echo ""
-    echo "[pre-push] Docker not available, running native ruff check..."
-    if [ -x .venv/bin/ruff ]; then
-        .venv/bin/ruff check .
-        echo ""
-        echo "[pre-push] Native lint passed. Full CI will run on GitHub."
-    elif command -v ruff >/dev/null 2>&1; then
-        ruff check .
-        echo ""
-        echo "[pre-push] Native lint passed. Full CI will run on GitHub."
-    else
-        echo "[pre-push] ERROR: Neither Docker nor ruff available, cannot verify code quality"
-        exit 1
-    fi
+    echo "[pre-push] Docker not available, running make lint..."
+    make lint || exit 1
+    echo ""
+    echo "[pre-push] Native lint passed. Full CI will run on GitHub."
 fi
 
 checks_run=0
@@ -103,7 +96,7 @@ if $run_generate && make -n generate-from-spec >/dev/null 2>&1; then
   ((checks_run++)) || true
 fi
 
-if $run_lint; then
+if $run_lint && $DOCKER_AVAILABLE; then
   echo ""
   echo "[pre-push] Running linters..."
   make lint
