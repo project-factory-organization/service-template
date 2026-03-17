@@ -438,7 +438,7 @@ ModuleNotFoundError: No module named 'shared.generated'
 
 ### Task 1: structlog + FastAPI request middleware + error logging
 
-**Status**: TODO
+**Status**: DONE
 **Priority**: HIGH
 
 **Description**: Добавить structured JSON logging как стандарт для всех python-сервисов. Основной deliverable — единообразные логи в stdout, которые оркестратор может собирать для ЛК пользователя.
@@ -473,7 +473,7 @@ ModuleNotFoundError: No module named 'shared.generated'
 
 ### Task 2: Telegram bot update middleware
 
-**Status**: TODO
+**Status**: DONE
 **Priority**: HIGH
 **Depends on**: Task 1 (shared logging config)
 

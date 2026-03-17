@@ -27,6 +27,8 @@ from shared.generated.schemas import CommandReceived, UserCreate, UserRead
 from shared.http_client import ServiceClient
 {%- endif %}
 
+from .middleware import install_update_logging
+
 configure_logging(service_name="tg_bot")
 LOGGER = structlog.stdlib.get_logger()
 
@@ -182,6 +184,7 @@ def build_application() -> Application:
     application = ApplicationBuilder().token(_get_token()).build()
     application.add_handler(CommandHandler("start", handle_start))
 {% endif %}
+    install_update_logging(application)
     return application
 
 
