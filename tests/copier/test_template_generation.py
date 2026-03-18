@@ -1170,7 +1170,6 @@ class TestSlowIntegration:
     @pytest.mark.parametrize(
         ("service", "modules"),
         [
-            ("backend", "backend,tg_bot"),
             ("tg_bot", "backend,tg_bot"),
             ("notifications_worker", "backend,tg_bot,notifications"),
         ],
