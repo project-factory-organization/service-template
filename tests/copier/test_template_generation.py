@@ -799,6 +799,7 @@ class TestDockerReadiness:
             "TG_BOT_IMAGE": "test:latest",
             "NOTIFICATIONS_WORKER_IMAGE": "test:latest",
             "FRONTEND_IMAGE": "test:latest",
+            "CODEGEN_PROJECT_ID": "test-project-id",
         }
 
         result = subprocess.run(  # noqa: S603, S607
@@ -820,6 +821,17 @@ class TestDockerReadiness:
         )
         assert result.returncode == 0, (
             f"compose.prod.yml config failed (full stack):\n{result.stderr}"
+        )
+
+    def test_compose_prod_has_project_id_labels(self, tmp_path: Path):
+        """All prod services must have com.codegen.project_id label for Promtail discovery."""
+        output = run_copier(tmp_path, "backend,tg_bot,notifications,frontend")
+        prod_compose = (output / "infra" / "compose.prod.yml").read_text()
+
+        # Every service block should reference the label
+        assert prod_compose.count("com.codegen.project_id") >= 6, (
+            "Expected com.codegen.project_id label on all 6 services "
+            "(backend, db, tg_bot, notifications_worker, frontend, redis)"
         )
 
     def test_compose_dev_config_valid(self, tmp_path: Path):
