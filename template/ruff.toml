@@ -35,6 +35,7 @@ max-statements = 60
 "shared/shared/generated/**" = ["PLR0915", "PLR0913", "C901", "B008"]
 "tests/copier/**" = ["S603", "S607"]
 "tests/**" = ["PLR2004"]  # Magic values acceptable in tests
+"services/*/tests/**" = ["PLR2004"]
 
 [lint.isort]
 combine-as-imports = true
